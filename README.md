@@ -41,7 +41,7 @@ The objective of EVA Guardian is to address these gaps through predictive diagno
 
 <figure>
 <p align="center">
-  <img src="EV_System_Arch.png" alt="EVA Guardian Block Diagram">
+  <img src="EvSystemArch.png" alt="EVA Guardian Block Diagram">
   <br>
   <em>Figure 1: EVA Guardian System</em>
 </p>
