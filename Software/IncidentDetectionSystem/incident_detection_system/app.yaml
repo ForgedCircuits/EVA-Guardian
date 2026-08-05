@@ -1,0 +1,12 @@
+name: Incident_Detection_System
+description: ""
+ports: []
+bricks:
+- arduino:motion_detection:
+    variables:
+      EI_MOTION_DETECTION_MODEL: "/home/arduino/.arduino-bricks/ei-models/mpu6500_imu-linux-aarch64-v7-impulse-#5.eim"
+- arduino:telegram_bot:
+    variables:
+      TELEGRAM_BOT_TOKEN: ""
+- arduino:web_ui: {}
+icon: 🚕
