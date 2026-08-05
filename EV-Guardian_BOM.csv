@@ -1,0 +1,15 @@
+Index,Manufacturer Part Number,Manufacturer,Description,Quantity,Reference
+1,ABX00162,Arduino,ARDUINO UNO Q 2GB RAM 16GB EMMC,2,https://in.element14.com/arduino/abx00162/uno-q-sbc-2gb-arm-cortex-a53-m33f/dp/4808383?MP=e14c-e14-on-the-line&COM=e14c-e14-on-the-line&osetc=e14c-e14-on-the-line
+2,EVAL-ADM3068EEBZ,Analog Devices,EVAL BOARD FOR ADM3068E,2,https://in.element14.com/analog-devices/eval-adm3068eebz/evaluation-board-rs485-transceiver/dp/4333473?MP=e14c-noscript&COM=e14c-noscript&osetc=e14-noscript-tracking-loss
+3,MX150 Receptacle to Free End,Molex,"Cable Assembly, MX150 Receptacle to Free End, 2 Ways, 3.5 mm, 1 Row, 600 mm, 23.6 """,3,https://in.element14.com/molex/2162811023/cable-assy-2pos-rcpt-free-end/dp/3652127?MP=e14c-noscript&COM=e14c-noscript&osetc=e14-noscript-tracking-loss
+4,ACS723 Module,Smart Elex,SmartElex Current Sensor Breakout - ACS723 (Low Current),1,https://robu.in/product/smartelex-current-sensor-breakout-acs723-low-current/
+5,L298N Motor driver,Smart Elex,SmartElex 2x2A DC Dual Motor Controller V2 (L298N),1,https://robu.in/product/smartelex-2x2a-dc-dual-motor-controller-v2-l298n/
+6,18650 Lithium Battery Charger,--,2S 8.4V 2A 18650 Lithium Battery Charger Module Type C,1,https://robu.in/product/2s-8-4v-2a-18650-lithium-battery-charger-module-type-c/
+7,18650 Li- battery,--,18650 capacity li-ion battery,4,--
+8,Battery Holder,--,18650 x 2 battery holder with cover and On/Off Switch,2,--
+9,HX-2S-A2 BMS,--,HX-2S-A2 Circular 2S 8.4V BMS 18650 Lithium Battery Protection Plate,2,https://robu.in/product/hx-2s-a2-circular-2s-8-4v-bms-18650-lithium-battery-protection-plate/
+10,LF412 ,Texas Instruments,LF412 Dual JFET Input Operational Amplifier IC DIP-8 Package,1,https://robu.in/product/lf412-dual-jfet-input-operational-amplifier-ic-dip-8-package/
+11,5V SPDT Relay,--,5V SPDT relay IC,1,--
+12,5V Relay module,--,5V 4 Channel Relay Module,2,https://robu.in/product/5v-4-channel-relay-module/
+13,GY-91 MPU6500,--,GY-91 MPU6500 + BMP280 7DOF IMU Sensor Module,1,https://robu.in/product/gy-91-mpu9250bmp280-10dof-acceleration-gyro-9-axis-sensor-module/
+14,NTC Thermistor,--,10k Ohm NTC Thermistor,1,https://robu.in/product/10k-ohm-ntc-thermistor/
