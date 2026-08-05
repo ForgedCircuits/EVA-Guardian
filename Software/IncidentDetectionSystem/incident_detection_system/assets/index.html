@@ -895,11 +895,11 @@
                     <stop offset="100%" stop-color="#6366f1" />
                   </linearGradient>
                 </defs>
-                <circle cx="120" cy="120" r="100" fill="none" stroke="url(#trackGrad)" stroke-width="10"
-                  stroke-dasharray="565" stroke-dashoffset="141" stroke-linecap="round"
+                <circle cx="120" cy="120" r="95" fill="none" stroke="url(#trackGrad)" stroke-width="12"
+                  stroke-dasharray="448 597" stroke-linecap="round"
                   transform="rotate(135 120 120)" />
-                <circle id="gauge-arc" cx="120" cy="120" r="100" fill="none" stroke="url(#fillGrad)" stroke-width="10"
-                  stroke-dasharray="565" stroke-dashoffset="565" stroke-linecap="round"
+                <circle id="gauge-arc" cx="120" cy="120" r="95" fill="none" stroke="url(#fillGrad)" stroke-width="12"
+                  stroke-dasharray="448 597" stroke-dashoffset="448" stroke-linecap="round"
                   transform="rotate(135 120 120)" />
               </svg>
               <div class="gauge-readout">
@@ -1211,8 +1211,8 @@
     /** @type {number} Maximum speed scale for arc gauge display in m/s. */
     const GAUGE_MAX_SPEED = 30;
 
-    /** @type {number} Total SVG stroke dasharray perimeter length. */
-    const GAUGE_ARC_TOTAL = 424;
+    /** @type {number} Total SVG stroke length for 270 degree arc (r=95). */
+    const GAUGE_ARC_TOTAL = 448;
 
     /** @type {string} Previous classification state cache. */
     let lastClassification = 'idle';
@@ -1239,8 +1239,8 @@
      * @return {void}
      */
     function setGaugeArc(speedMps) {
-      const pct = Math.min(speedMps / GAUGE_MAX_SPEED, 1);
-      const offset = 565 - (GAUGE_ARC_TOTAL * pct);
+      const pct = Math.min(Math.max(speedMps, 0) / GAUGE_MAX_SPEED, 1);
+      const offset = GAUGE_ARC_TOTAL * (1 - pct);
       document.getElementById('gauge-arc').style.strokeDashoffset = offset;
 
       let colour = '#38bdf8';
