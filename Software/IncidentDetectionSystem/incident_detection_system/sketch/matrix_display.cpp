@@ -5,6 +5,7 @@
  */
 
 #include "matrix_display.h"
+#include <math.h>
 
 static Arduino_LED_Matrix matrix;
 K_MUTEX_DEFINE(matrix_mtx);
@@ -37,19 +38,7 @@ static const uint8_t DIGIT_FONT[10][7][5] = {
   {{0,1,1,1,0},{1,0,0,0,1},{1,0,0,0,1},{0,1,1,1,1},{0,0,0,0,1},{0,0,0,0,1},{0,1,1,1,0}},
 };
 
-/**
- * @brief 8x13 "X" Symbol glyph pattern for accident alerts.
- */
-static const uint8_t X_SYMBOL[8][13] = {
-  {0,7,7,0,0,0,0,0,0,0,7,7,0},
-  {0,0,7,7,0,0,0,0,0,7,7,0,0},
-  {0,0,0,7,7,0,0,0,7,7,0,0,0},
-  {0,0,0,0,7,7,7,7,7,0,0,0,0},
-  {0,0,0,0,7,7,7,7,7,0,0,0,0},
-  {0,0,0,7,7,0,0,0,7,7,0,0,0},
-  {0,0,7,7,0,0,0,0,0,7,7,0,0},
-  {0,7,7,0,0,0,0,0,0,0,7,7,0}
-};
+
 
 /**
  * @brief Initializes matrix peripheral and registers Router Bridge providers.
@@ -60,7 +49,6 @@ void init_matrix_display(void) {
   matrix.setGrayscaleBits(3);
   matrix.clear();
 
-  Bridge.provide("show_speed", show_speed);
   Bridge.provide("show_alert", show_alert);
 }
 
@@ -100,44 +88,52 @@ void flush_matrix_locked(void) {
 }
 
 /**
- * @brief Bridge provider callback to display vehicle speed.
- * @param speed Speed magnitude integer.
+ * @brief Renders an animated water level based on physical device tilt.
+ * @param roll_angle Device tilt angle in radians.
  * @return void
  */
-void show_speed(int speed) {
+void render_water_level(float roll_angle) {
   k_mutex_lock(&matrix_mtx, K_FOREVER);
   clear_matrix_buf();
 
-  if (speed < 0)  speed = 0;
-  if (speed > 99) speed = 99;
+  // Draw bucket container borders (left, right, bottom)
+  for (int y = 0; y < 8; y++) {
+    matrix_buf[y][0] = 7;   // Left border
+    matrix_buf[y][12] = 7;  // Right border (shifted to cell 12)
+  }
+  for (int x = 0; x < 13; x++) {
+    matrix_buf[7][x] = 7;   // Bottom border
+  }
 
-  if (speed < 10) {
-    render_digit(speed, 4);
-  } else {
-    render_digit(speed / 10, 1);
-    render_digit(speed % 10, 7);
+  // Matrix geometry: 8 rows (0-7), interior columns (1-11)
+  // We want the surface to pivot around the center (13 cols -> center is 6.0).
+  // Shift cy lower (e.g. 4.5) to simulate ~40% full
+  float cx = 6.0f;
+  float cy = 4.5f;
+
+  for (int x = 1; x < 12; x++) {
+    // Calculate the row index of the water surface for this column
+    // Adding 0.5 for rounding to nearest integer pixel
+    int surface_y = (int)(cy + tan(roll_angle) * (x - cx) + 0.5f);
+    
+    // Fill water below the surface line, stopping before bottom border
+    for (int y = 0; y < 7; y++) {
+      if (y >= surface_y) {
+        matrix_buf[y][x] = 4; // Use slightly dimmer brightness (4) for water to contrast with border
+      }
+    }
   }
 
   flush_matrix_locked();
   k_mutex_unlock(&matrix_mtx);
 }
 
+
+
 /**
  * @brief Bridge provider callback to display flashing accident alert symbol.
  * @return void
  */
 void show_alert(void) {
-  for (int flash = 0; flash < 5; flash++) {
-    k_mutex_lock(&matrix_mtx, K_FOREVER);
-    memcpy(matrix_buf, X_SYMBOL, sizeof(matrix_buf));
-    flush_matrix_locked();
-    k_mutex_unlock(&matrix_mtx);
-    delay(250);
-
-    k_mutex_lock(&matrix_mtx, K_FOREVER);
-    clear_matrix_buf();
-    flush_matrix_locked();
-    k_mutex_unlock(&matrix_mtx);
-    delay(250);
-  }
+  // Deliberately empty, accident symbol removed from matrix
 }

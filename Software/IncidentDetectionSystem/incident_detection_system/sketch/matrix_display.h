@@ -39,12 +39,14 @@ void render_digit(int digit, int col_offset, uint8_t brightness = 7);
  */
 void flush_matrix_locked(void);
 
+
+
 /**
- * @brief Displays speed value on the LED matrix.
- * @param speed Velocity magnitude to display (0 to 99).
+ * @brief Renders a dynamic water level animation based on tilt angle.
+ * @param roll_angle The tilt angle of the device in radians.
  * @return void
  */
-void show_speed(int speed);
+void render_water_level(float roll_angle);
 
 /**
  * @brief Displays blinking "X" alert symbol on accident detection.

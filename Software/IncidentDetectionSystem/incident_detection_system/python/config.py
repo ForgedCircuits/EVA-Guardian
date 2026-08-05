@@ -20,12 +20,6 @@ GRAVITY: float = 9.80665
 ## @brief Standstill acceleration threshold for speed integration in m/s².
 STANDSTILL_THRESHOLD: float = 0.35
 
-## @brief Velocity decay factor applied when movement falls below standstill threshold.
-SPEED_DAMPING: float = 0.85
-
-## @brief Frequency divisor for LED Matrix speed updates.
-SPEED_UPDATE_EVERY_N: int = 2
-
 ## @brief Minimum interval in seconds between Telegram accident alert dispatches.
 ACCIDENT_COOLDOWN_S: float = 60.0
 
@@ -34,3 +28,4 @@ INFERENCE_BUFFER_SIZE: int = 126
 
 ## @brief Maximum telemetry log entries retained in memory.
 MAX_HISTORY: int = 50
+

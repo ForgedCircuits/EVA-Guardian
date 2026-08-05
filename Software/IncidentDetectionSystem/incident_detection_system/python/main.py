@@ -72,35 +72,24 @@ def run_inference(buffer: list) -> None:
         if len(telemetry.state["history"]) > config.MAX_HISTORY:
             telemetry.state["history"] = telemetry.state["history"][: config.MAX_HISTORY]
 
-    # Alert & LED Matrix updates on state classification change
+    # Alert updates on state classification change
     if best == "Accident":
         alert_service.dispatch_accident_alert(bot, cls)
-    elif best == "Front_and_Back":
-        with telemetry._state_lock:
-            sp = telemetry.state["speed_mps"]
-        try:
-            Bridge.notify("show_speed", int(round(sp)))
-        except Exception:
-            pass
-    else:
-        try:
-            Bridge.notify("show_speed", 0)
-        except Exception:
-            pass
 
 
-def sensor_movement_wrapper(x: float, y: float, z: float) -> None:
+def sensor_movement_wrapper(x: float, y: float, z: float, total_acc: float = 0.0) -> None:
     """!
     @brief Bridge provider callback wrapper for sensor readings.
     @param x Acceleration along X axis in g.
     @param y Acceleration along Y axis in g.
     @param z Acceleration along Z axis in g.
+    @param total_acc Total normalized acceleration in m/s2 from MCU.
     @return None
     """
     global _infer_buffer
 
-    # Process telemetry and calculate speed
-    telemetry.record_sensor_movement(x, y, z)
+    # Process telemetry
+    telemetry.record_sensor_movement(x, y, z, total_acc)
 
     # Accumulate features for ML inference window
     x_ms2 = x * config.GRAVITY
@@ -124,7 +113,7 @@ Bridge.provide("record_sensor_movement", sensor_movement_wrapper)
 # Expose WebUI REST endpoints
 ui.expose_api("GET", "/status", telemetry.get_telemetry_status)
 ui.expose_api("GET", "/history", telemetry.get_telemetry_history)
-ui.expose_api("POST", "/reset_speed", telemetry.reset_telemetry_speed)
+ui.expose_api("POST", "/reset_incidents", telemetry.reset_telemetry_incidents)
 
 logger.info("All Bridge providers and WebUI endpoints registered. Starting App framework...")
 

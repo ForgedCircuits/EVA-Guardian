@@ -5,6 +5,8 @@
  */
 
 #include "imu_sensor.h"
+#include "matrix_display.h"
+#include <math.h>
 
 static MPU6500 IMU;
 static calData calib = { 0 };
@@ -64,10 +66,22 @@ void update_imu_sample(void) {
       filtAccZ = (ALPHA * rawAccZ) + ((1.0f - ALPHA) * filtAccZ);
     }
 
+    /* Calculate total acceleration (normalized vector in m/s^2) neglecting gravity on Z */
+    float accX_ms2 = filtAccX * 9.8f;
+    float accY_ms2 = filtAccY * 9.8f;
+    float accZ_ms2 = filtAccZ * 9.8f;
+    float accZ_ms2_no_g = accZ_ms2 - 9.8f;
+    float totalAcc_ms2 = sqrt(accX_ms2 * accX_ms2 + accY_ms2 * accY_ms2 + accZ_ms2_no_g * accZ_ms2_no_g);
+
+    /* Calculate tilt (roll) angle and animate water level indicator */
+    float roll_angle = atan2(-filtAccY, filtAccZ);
+    render_water_level(roll_angle);
+
     /* Dispatch filtered telemetry to Python backend */
     Bridge.call("record_sensor_movement",
                 filtAccX,
                 filtAccY,
-                filtAccZ);
+                filtAccZ,
+                totalAcc_ms2);
   }
 }

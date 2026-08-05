@@ -58,12 +58,10 @@ def status_cmd(sender: Sender, message: Message) -> None:
     """
     register_chat(sender)
     with telemetry._state_lock:
-        sp = telemetry.state["speed_mps"]
         cls = telemetry.state["last_classification"]
     sender.reply(
         "*SYSTEM TELEMETRY REPORT*\n"
         "-----------------------\n"
-        f"Velocity: `{sp:.2f} m/s`\n"
         f"State: `{cls}`"
     )
 
@@ -106,17 +104,14 @@ def dispatch_accident_alert(bot: TelegramBot, cls: dict) -> None:
     _last_accident_ts = now
     confidence_pct = round(cls.get("Accident", 0) * 100, 1)
 
-    with telemetry._state_lock:
-        speed = telemetry.state["speed_mps"]
-
     msg = (
         "*CRITICAL ALERT: ACCIDENT DETECTED*\n"
         "-----------------------------------\n"
         f"Confidence Level: `{confidence_pct}%`\n"
-        f"Vehicle Velocity: `{speed:.2f} m/s`\n"
         f"Timestamp: `{time.strftime('%Y-%m-%d %H:%M:%S')}`\n\n"
         "System: Arduino UNO Q Incident Monitor"
     )
+
 
     alert_sent = False
 
