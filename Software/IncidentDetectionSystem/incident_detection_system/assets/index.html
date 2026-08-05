@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EV Telematics & Battery Health System</title>
+  <meta name="description" content="Industrial EV Telematics, Battery Health & Drive Safety Dashboard." />
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       Design Tokens & Modern Dark Palette
+    ════════════════════════════════════════════════════════════════ */
+    :root {
+      --bg-base: #070a12;
+      --bg-card: #0f172a;
+      --bg-card-hover: #162036;
+      --bg-input: #0b1220;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(56, 189, 248, 0.4);
+
+      /* Accent Colors */
+      --color-cyan: #38bdf8;
+      --color-indigo: #6366f1;
+      --color-emerald: #10b981;
+      --color-amber: #f59e0b;
+      --color-rose: #f43f5e;
+      --color-purple: #a855f7;
+      --color-slate: #64748b;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #475569;
+
+      --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+
+      --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+      --shadow-alert: 0 0 40px rgba(244, 63, 94, 0.35);
+      --transition: 0.25s ease-in-out;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Grid background effect */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app-container {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Navbar & Header ────────────────────────────────────────── */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 32px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(11, 18, 32, 0.85);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(99, 102, 241, 0.25));
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-cyan);
+    }
+
+    .brand-logo svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text-main);
+    }
+
+    .header-status-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-emerald);
+      letter-spacing: 0.5px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--color-emerald);
+      box-shadow: 0 0 8px var(--color-emerald);
+    }
+
+    .status-badge-large {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--color-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+    }
+
+    .sos-badge {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 6px;
+      background: rgba(244, 63, 94, 0.15);
+      color: #fda4af;
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      background: rgba(244, 63, 94, 0.1);
+      color: #fda4af;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-action:hover {
+      background: rgba(244, 63, 94, 0.25);
+      border-color: rgba(244, 63, 94, 0.6);
+    }
+
+    .btn-action svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ── Content Layout Wrapper ─────────────────────────────────────── */
+    .content-area {
+      flex: 1;
+      padding: 24px 32px 40px;
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* ── Section Titles ──────────────────────────────────────── */
+    .section-header {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: var(--text-main);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-transform: uppercase;
+    }
+
+    .section-header::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 16px;
+      background: var(--color-cyan);
+      border-radius: 2px;
+    }
+
+    .section-header.events::before {
+      background: var(--color-amber);
+    }
+
+    .section-header.footer::before {
+      background: var(--color-indigo);
+    }
+
+    /* ── Base Card Design ──────────────────────────────────────── */
+    .panel-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px 22px;
+      box-shadow: var(--shadow-card);
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .panel-card:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .stat-tile {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: var(--transition);
+    }
+
+    .stat-tile:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .stat-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      line-height: 1.1;
+      margin: 4px 0;
+      color: var(--text-main);
+    }
+
+    .stat-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .tag-normal {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--color-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       FOOTER SECTION LAYOUT
+    ════════════════════════════════════════════════════════════════ */
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    /* Latest Event Card */
+    .event-content {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .event-icon-box {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-cyan);
+    }
+
+    .event-icon-box svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .event-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .event-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* Precautions */
+    .precautions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .precaution-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .precaution-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-cyan);
+    }
+
+    /* Audit Log Feed */
+    .log-feed {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 16px;
+      padding-right: 4px;
+    }
+
+    /* Scrollbar styling */
+    .log-feed::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .log-feed::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .log-feed::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .log-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      font-size: 11px;
+    }
+
+    .log-time {
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      width: 65px;
+    }
+
+    .log-badge {
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    .log-conf {
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .row-Front_and_Back .log-badge {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--color-emerald);
+    }
+
+    .row-Up_and_Down .log-badge {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--color-amber);
+    }
+
+    .row-Accident .log-badge {
+      background: rgba(244, 63, 94, 0.2);
+      color: #fda4af;
+    }
+
+    .row-idle .log-badge {
+      background: rgba(100, 116, 139, 0.15);
+      color: var(--text-dim);
+    }
+
+    /* Warning Pop-up Modal Container */
+    .warning-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 80px;
+      right: 32px;
+      background: rgba(244, 63, 94, 0.95);
+      border: 1px solid rgba(253, 164, 175, 0.5);
+      border-radius: var(--radius-md);
+      padding: 16px 24px;
+      z-index: 1000;
+      box-shadow: var(--shadow-alert);
+      color: #fff;
+      max-width: 380px;
+      animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .warning-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .warning-body {
+      font-size: 12px;
+      margin-top: 6px;
+      opacity: 0.9;
+    }
+
+    @media (max-width: 1024px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header-status-group {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+      }
+
+      .navbar {
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-container">
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+      <div class="brand-group">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">EVA Guardian</div>
+        </div>
+      </div>
+
+      <div class="header-status-group">
+        <div class="status-pill" id="sys-active-pill">
+          <div class="status-dot"></div>
+          <span>SYSTEM ACTIVE</span>
+        </div>
+
+        <div class="status-badge-large" id="overall-status-badge">SYSTEM OPTIMAL</div>
+
+        <div class="sos-badge" id="sos-trigger-badge" style="display: none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" />
+          </svg>
+          EMERGENCY SOS TRIGGERED
+        </div>
+
+        <button class="btn-action" id="btn-reset" onclick="resetIncidents()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6" />
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+          </svg>
+          <span>Reset Incidents</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Warning Pop-up Modal Overlay -->
+    <div class="warning-modal-overlay" id="warning-popup">
+      <div class="warning-header">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path
+            d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" />
+        </svg>
+        <span id="warning-title">SYSTEM ALERT</span>
+      </div>
+      <div class="warning-body" id="warning-message">Telemetry warning event triggered.</div>
+    </div>
+
+    <!-- Content Area -->
+    <main class="content-area">
+
+      <!-- ═══════════════════════════════════════════════════════════════
+         BATTERY SECTION
+      ════════════════════════════════════════════════════════════════ -->
+      <section class="section-battery">
+        <div class="section-header">BATTERY SYSTEM</div>
+        <div class="panel-card">
+          <div class="metrics-grid">
+
+            <div class="stat-tile">
+              <div class="stat-title">
+                SOC
+                <span class="status-tag tag-normal">Optimal</span>
+              </div>
+              <div class="stat-value" id="ev-soc-num" style="color:var(--color-emerald)">88%</div>
+              <div class="stat-subtitle">State of Charge</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">
+                SOH
+                <span class="status-tag tag-normal">Excellent</span>
+              </div>
+              <div class="stat-value" id="bh-soh" style="color:var(--color-cyan)">96.8%</div>
+              <div class="stat-subtitle">State of Health</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">VOLTAGE</div>
+              <div class="stat-value" id="ev-voltage" style="color:var(--color-amber)">8.4</div>
+              <div class="stat-subtitle">Pack Volts (DC)</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">CURRENT</div>
+              <div class="stat-value" id="ev-current" style="color:var(--color-purple)">0.5</div>
+              <div class="stat-subtitle">Amperes (A)</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">PACK CAPACITY</div>
+              <div class="stat-value" id="ev-capacity" style="color:var(--text-main)">18650</div>
+              <div class="stat-subtitle">mAH</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">OVER VOLTAGE (OV)</div>
+              <div class="stat-value" style="font-size:22px" id="bh-ov">NORMAL</div>
+              <div class="stat-subtitle">Max 4.15V / Cell</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">UNDER VOLTAGE (UV)</div>
+              <div class="stat-value" style="font-size:22px" id="bh-uv">NORMAL</div>
+              <div class="stat-subtitle">Min 3.65V / Cell</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">OVER CURRENT (OC)</div>
+              <div class="stat-value" style="font-size:22px" id="bh-oc">NORMAL</div>
+              <div class="stat-subtitle">Surge Protection</div>
+            </div>
+
+            <div class="stat-tile" style="grid-column: span auto;">
+              <div class="stat-title">
+                BMS STATUS
+                <span class="status-tag tag-normal">Active</span>
+              </div>
+              <div class="stat-value" style="font-size:22px;color:var(--color-emerald)" id="bh-bms">NOMINAL</div>
+              <div class="stat-subtitle">Cell Balancing</div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+         EVENTS SECTION
+      ════════════════════════════════════════════════════════════════ -->
+      <section class="section-events">
+        <div class="section-header events">DRIVE & SAFETY EVENTS</div>
+        <div class="panel-card">
+          <div class="metrics-grid">
+
+            <div class="stat-tile">
+              <div class="stat-title">TRIP DURATION</div>
+              <div class="stat-value" id="ds-duration" style="color:var(--color-emerald)">00:00:00</div>
+              <div class="stat-subtitle">Elapsed Drive Time</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">POTHOLES DETECTED</div>
+              <div class="stat-value" id="ds-potholes" style="color:var(--color-amber)">0</div>
+              <div class="stat-subtitle">Vertical Shock Impacts</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">SUDDEN ACCELERATION</div>
+              <div class="stat-value" id="ds-accel" style="color:var(--color-rose)">0</div>
+              <div class="stat-subtitle">Hard Accel Events</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">HARSH BRAKING</div>
+              <div class="stat-value" id="ds-brake" style="color:var(--color-purple)">0</div>
+              <div class="stat-subtitle">Hard Braking Events</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">SOS STATUS</div>
+              <div class="stat-value" id="ds-sos" style="color:var(--color-cyan)">READY</div>
+              <div class="stat-subtitle">Telegram Emergency Bot</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">TOTAL ACCELERATION</div>
+              <div class="stat-value" id="ev-accx">0.00</div>
+              <div class="stat-subtitle"> m/s²</div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+         FOOTER SECTION
+      ════════════════════════════════════════════════════════════════ -->
+      <section class="section-footer">
+        <div class="section-header footer">SYSTEM LOGS & CONTEXT</div>
+        <div class="footer-grid">
+
+          <!-- Latest Event -->
+          <div class="panel-card">
+            <div class="card-label">LATEST EVENT</div>
+            <div class="event-content">
+              <div class="event-icon-box" id="latest-event-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v4l3 3" />
+                </svg>
+              </div>
+              <div>
+                <div class="event-title" id="latest-event-title">System Normal — Monitoring</div>
+                <div class="event-time" id="latest-event-time">--:--:--</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Precautions & Recommended Actions -->
+          <div class="panel-card">
+            <div class="card-label">PRECAUTIONS & RECOMMENDED ACTIONS</div>
+            <div class="precautions-list" id="precautions-container">
+              <div class="precaution-item">
+                <div class="precaution-dot"></div>
+                <span>Thermal state is optimal for high-power fast charging (< 40°C).</span>
+              </div>
+              <div class="precaution-item">
+                <div class="precaution-dot"></div>
+                <span>Cell voltage variance across modules is within ±8mV tolerance.</span>
+              </div>
+              <div class="precaution-item">
+                <div class="precaution-dot"></div>
+                <span>No immediate battery maintenance or servicing required.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sensor Fusion & Edge ML Log -->
+          <div class="panel-card">
+            <div class="card-label">SENSOR FUSION & EDGE ML LOG</div>
+            <div class="log-feed" id="history-list">
+              <div style="color:var(--text-dim);padding:20px;text-align:center">No events recorded yet.</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    /**
+     * @file index.html
+     * @brief Dashboard UI script for EV Telematics and Incident Monitor.
+     * @details Manages live telemetry polling and dynamic alert notifications for the unified layout.
+     */
+
+    /** @type {number} Status polling interval in milliseconds. */
+    const POLL_INTERVAL_MS = 300;
+
+    /** @type {number} History audit log polling interval in milliseconds. */
+    const HISTORY_POLL_MS = 2000;
+
+    /** @type {string} Previous classification state cache. */
+    let lastClassification = 'idle';
+
+    /** @type {number|null} Warning popup auto-dismiss timer handle. */
+    let warningTimeout = null;
+
+    /**
+     * @brief Triggers a slide-in warning pop-up modal overlay.
+     * @param {string} title Warning alert title.
+     * @param {string} message Warning alert descriptive message.
+     * @return {void}
+     */
+    function triggerWarningPopup(title, message) {
+      const popup = document.getElementById('warning-popup');
+      document.getElementById('warning-title').textContent = title;
+      document.getElementById('warning-message').textContent = message;
+      popup.style.display = 'block';
+
+      if (warningTimeout) clearTimeout(warningTimeout);
+      warningTimeout = setTimeout(() => { popup.style.display = 'none'; }, 6000);
+    }
+
+    /**
+     * @brief Formats seconds into HH:MM:SS duration string.
+     * @param {number} totalSecs Total elapsed duration in seconds.
+     * @return {string} Formatted HH:MM:SS timestamp string.
+     */
+    function formatTimeSeconds(totalSecs) {
+      const hrs = Math.floor(totalSecs / 3600).toString().padStart(2, '0');
+      const mins = Math.floor((totalSecs % 3600) / 60).toString().padStart(2, '0');
+      const secs = (totalSecs % 60).toString().padStart(2, '0');
+      return `${hrs}:${mins}:${secs}`;
+    }
+
+    /**
+     * @brief Renders incident audit log rows in the feed.
+     * @param {Array<Object>} history Array of telemetry incident event objects.
+     * @return {void}
+     */
+    function renderHistory(history) {
+      const list = document.getElementById('history-list');
+      if (!history || history.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center">No events recorded yet.</div>';
+        return;
+      }
+      list.innerHTML = history.map(ev => {
+        const cls = ev.classification || 'idle';
+        const pct = Math.round((ev.confidence || 0) * 100);
+        return `
+        <div class="log-row row-${cls}">
+          <span class="log-time">${ev.time || '--'}</span>
+          <span class="log-badge">${cls.replace(/_/g, ' ')}</span>
+          <span class="log-conf">${pct}% CONF</span>
+        </div>`;
+      }).join('');
+    }
+
+    /**
+     * @brief Polls backend /status endpoint and updates UI elements.
+     * @return {Promise<void>}
+     */
+    async function pollStatus() {
+      try {
+        const resp = await fetch('/status', { cache: 'no-store' });
+        if (!resp.ok) return;
+        const data = await resp.json();
+
+        /* Total Acceleration (Normalized Vector calculated on MCU) */
+        const totalAcc = data.total_acc_ms2 || 0.0;
+        document.getElementById('ev-accx').textContent = totalAcc.toFixed(2);
+
+        /* Latest Classification Event */
+        const cls = data.last_classification || 'idle';
+        if (cls !== lastClassification && cls !== 'idle') {
+          document.getElementById('latest-event-title').textContent = `Detected: ${cls.replace(/_/g, ' ')}`;
+          document.getElementById('latest-event-time').textContent = data.timestamp || '--:--:--';
+          if (cls === 'Accident') {
+            triggerWarningPopup('CRITICAL ACCIDENT DETECTED', 'Emergency notification dispatched to Telegram bot.');
+          }
+        }
+        lastClassification = cls;
+
+        /* Battery Telemetry */
+        const bh = data.battery_health || {};
+        const soc = bh.soc || 88.5;
+        document.getElementById('ev-soc-num').textContent = `${Math.round(soc)}%`;
+        document.getElementById('bh-soh').textContent = `${bh.soh || 96.8}%`;
+        document.getElementById('ev-voltage').textContent = (bh.voltage_v || 8.4).toFixed(1);
+        document.getElementById('ev-current').textContent = (bh.current_a || 0.5).toFixed(1);
+        document.getElementById('bh-ov').textContent = bh.ov || 'NORMAL';
+        document.getElementById('bh-uv').textContent = bh.uv || 'NORMAL';
+        document.getElementById('bh-oc').textContent = bh.oc || 'NORMAL';
+        document.getElementById('bh-bms').textContent = bh.bms_status || 'NOMINAL';
+
+        /* Drive & Safety Telemetry */
+        const ds = data.drive_safety || {};
+        document.getElementById('ds-duration').textContent = formatTimeSeconds(ds.trip_duration_s || 0);
+        document.getElementById('ds-potholes').textContent = ds.potholes || 0;
+        document.getElementById('ds-accel').textContent = ds.sudden_accel || 0;
+        document.getElementById('ds-brake').textContent = ds.harsh_braking || 0;
+
+        /* Global UI State Badges */
+        const badge = document.getElementById('overall-status-badge');
+        const sosBadge = document.getElementById('sos-trigger-badge');
+
+        if (cls === 'Accident') {
+          badge.textContent = 'ACCIDENT ALERT';
+          badge.style.color = 'var(--color-rose)';
+          badge.style.background = 'rgba(244, 63, 94, 0.2)';
+          sosBadge.style.display = 'flex';
+          document.getElementById('ds-sos').textContent = 'TRIGGERED';
+          document.getElementById('ds-sos').style.color = 'var(--color-rose)';
+        } else {
+          badge.textContent = 'SYSTEM OPTIMAL';
+          badge.style.color = 'var(--color-emerald)';
+          badge.style.background = 'rgba(16, 185, 129, 0.15)';
+          sosBadge.style.display = 'none';
+          document.getElementById('ds-sos').textContent = 'READY';
+          document.getElementById('ds-sos').style.color = 'var(--color-cyan)';
+        }
+
+      } catch (err) {
+        console.warn('Telemetry poll error', err);
+      }
+    }
+
+    /**
+     * @brief Polls backend /history endpoint and updates log feed.
+     * @return {Promise<void>}
+     */
+    async function pollHistory() {
+      try {
+        const resp = await fetch('/history', { cache: 'no-store' });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderHistory(data.history || []);
+      } catch (_) { }
+    }
+
+    /**
+     * @brief Triggers trip/speed reset endpoint on the backend.
+     * @return {Promise<void>}
+     */
+    async function resetIncidents() {
+      const btn = document.getElementById('btn-reset');
+      btn.disabled = true;
+      try {
+        await fetch('/reset_incidents', { method: 'POST' });
+        await pollStatus();
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    /* Initialize background timers */
+    pollStatus();
+    pollHistory();
+    setInterval(pollStatus, POLL_INTERVAL_MS);
+    setInterval(pollHistory, HISTORY_POLL_MS);
+  </script>
+</body>
+
+</html>
