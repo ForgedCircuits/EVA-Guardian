@@ -11,9 +11,9 @@ AccelData accelData;
 
 #define GRAVITY 9.80665f
 
-// Sampling configuration: 50 Hz (20 ms interval)
-#define SAMPLING_FREQ_HZ 100
-#define SAMPLING_INTERVAL_MS (1000 / SAMPLING_FREQ_HZ)
+// Sampling configuration: 42 Hz for Edge Impulse
+#define SAMPLING_FREQ_HZ 42
+const unsigned long SAMPLE_INTERVAL_US = 1000000UL / SAMPLING_FREQ_HZ;
 const float DT = 1.0f / SAMPLING_FREQ_HZ; 
 unsigned long lastSampleTime = 0;
 
@@ -37,12 +37,15 @@ void setup() {
   IMU.calibrateAccelGyro(&calib);
   IMU.init(calib, IMU_ADDRESS);
 #endif
+
+  lastSampleTime = micros();
 }
 
 void loop() {
-  unsigned long now = millis();
-  if (now - lastSampleTime >= SAMPLING_INTERVAL_MS) {
-    lastSampleTime = now;
+  unsigned long nowUs = micros();
+  if (nowUs - lastSampleTime >= SAMPLE_INTERVAL_US) {
+    // Add interval to prevent timing drift over time
+    lastSampleTime += SAMPLE_INTERVAL_US;
 
     IMU.update();
     IMU.getAccel(&accelData);
@@ -62,7 +65,7 @@ void loop() {
       filtAccZ = (ALPHA * rawAccZ) + ((1.0f - ALPHA) * filtAccZ);
     }
 
-    // 5. Clean Serial flushing (prevents Zephyr hardware serial buffer freeze)
+    // Print values at exactly 42 Hz
     Serial.print(filtAccX); Serial.print(",");
     Serial.print(filtAccY); Serial.print(",");
     Serial.println(filtAccZ);
