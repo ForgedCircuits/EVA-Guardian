@@ -5,6 +5,8 @@
          accident notifications with cooldown protection.
 """
 
+import json
+import os
 import time
 from typing import Set
 
@@ -15,8 +17,30 @@ import telemetry
 
 logger = Logger("alert-service")
 
+CHAT_FILE = "known_chats.json"
+
 ## @brief Set of registered Telegram chat IDs.
 known_chat_ids: Set[int] = set()
+
+def _load_chats() -> None:
+    if os.path.exists(CHAT_FILE):
+        try:
+            with open(CHAT_FILE, "r") as f:
+                chats = json.load(f)
+                known_chat_ids.update(chats)
+                logger.info(f"Loaded {len(known_chat_ids)} chats from {CHAT_FILE}")
+        except Exception as e:
+            logger.warning(f"Failed to load chats: {e}")
+
+def _save_chats() -> None:
+    try:
+        with open(CHAT_FILE, "w") as f:
+            json.dump(list(known_chat_ids), f)
+    except Exception as e:
+        logger.warning(f"Failed to save chats: {e}")
+
+_load_chats()
+
 
 ## @brief Last accident Telegram alert dispatch timestamp.
 _last_accident_ts: float = 0.0
@@ -31,6 +55,7 @@ def register_chat(sender: Sender) -> None:
     if hasattr(sender, "chat_id") and sender.chat_id:
         if sender.chat_id not in known_chat_ids:
             known_chat_ids.add(sender.chat_id)
+            _save_chats()
             logger.info(f"Registered Telegram chat_id: {sender.chat_id}")
 
 

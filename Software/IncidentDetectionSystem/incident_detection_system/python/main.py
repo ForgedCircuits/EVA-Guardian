@@ -31,7 +31,8 @@ ui = WebUI()
 alert_service.setup_telegram_bot(bot)
 
 ## @brief Inference accumulative buffer list.
-_infer_buffer = []
+_infer_buffer: list = []
+_consecutive_accident_count: int = 0
 
 
 def run_inference(buffer: list) -> None:
@@ -72,9 +73,16 @@ def run_inference(buffer: list) -> None:
         if len(telemetry.state["history"]) > config.MAX_HISTORY:
             telemetry.state["history"] = telemetry.state["history"][: config.MAX_HISTORY]
 
-    # Alert updates on state classification change
+    # Alert updates on state classification change (requires 3 consecutive detections)
+    global _consecutive_accident_count
     if best == "Accident":
-        alert_service.dispatch_accident_alert(bot, cls)
+        _consecutive_accident_count += 1
+        if _consecutive_accident_count >= 3:
+            alert_service.dispatch_accident_alert(bot, cls)
+            # Do not reset here, let it keep alerting if it remains an accident,
+            # alert_service handles the cooldown.
+    else:
+        _consecutive_accident_count = 0
 
 
 def sensor_movement_wrapper(x: float, y: float, z: float, total_acc: float = 0.0) -> None:
@@ -110,12 +118,21 @@ motion_detection.on_movement_detection("Accident", lambda c: logger.info(f"Accid
 # Register Router Bridge Providers
 Bridge.provide("record_sensor_movement", sensor_movement_wrapper)
 
+# Register RS485 BMS telemetry Bridge provider
+# Called by the IDS firmware (rs485_master.cpp) every ~2 seconds with live BMS data
+Bridge.provide("update_bms_data", telemetry.update_bms_data)
+Bridge.provide("report_rs485_fault", telemetry.report_rs485_fault)
+Bridge.provide("check_bms_via_network", telemetry.check_bms_via_network)
+Bridge.provide("update_ids_voltage", telemetry.update_ids_voltage)
+
 # Expose WebUI REST endpoints
 ui.expose_api("GET", "/status", telemetry.get_telemetry_status)
 ui.expose_api("GET", "/history", telemetry.get_telemetry_history)
 ui.expose_api("POST", "/reset_incidents", telemetry.reset_telemetry_incidents)
+ui.expose_api("GET", "/bms", telemetry.get_bms_status)
 
 logger.info("All Bridge providers and WebUI endpoints registered. Starting App framework...")
+logger.info("RS485 BMS data endpoint: GET /bms  |  Live update via Bridge 'update_bms_data'")
 
 # Start main application runtime
 App.run()

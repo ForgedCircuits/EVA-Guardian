@@ -1,5 +1,6 @@
 name: BatteryManagementSystem
 description: ""
 ports: []
-bricks: []
+bricks:
+- arduino:web_ui: {}
 icon: 😀
