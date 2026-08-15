@@ -1,74 +1,70 @@
-# Incident Detection & Telemetry System (EVA-Guardian)
+# 🚕 Incident Detection & Telemetry System (EVA-Guardian)
 
-This repository contains the software implementation of the **Incident Detection & Telematics System** (part of the **EVA-Guardian** project). The system performs real-time vehicle dynamics monitoring, detects safety incidents (such as accidents, harsh braking, sudden acceleration, and potholes), simulates battery telemetry, and dispatches instant Telegram alerts to emergency responders.
+This repository contains the software implementation of the **Incident Detection & Telematics System**, a primary subsystem of the **EVA-Guardian** project. The system performs real-time vehicle dynamics monitoring, detects safety incidents (such as accidents, harsh braking, sudden acceleration, and potholes) via Machine Learning at the edge, aggregates BMS telemetry, and dispatches instant Telegram alerts to emergency responders.
 
-The architecture is split into two primary components communicating over a fast bidirection serial bridge:
-1. **Arduino UNO Q Firmware (`sketch/`)**: Handles 42 Hz IMU sensor data acquisition, Exponential Moving Average (EMA) filtering, physical water-level tilt animation, and hardware alerts.
-2. **Python Backend Service (`python/`)**: Orchestrates Edge Impulse Machine Learning motion inference, thread-safe telematics telemetry tracking, Telegram Bot event handling, and a REST API for the Web UI.
+The architecture is split into two communicating components via a bidirectional serial bridge:
+1. **Arduino Q Firmware (`sketch/`)**: Handles 42 Hz IMU sensor data acquisition, Exponential Moving Average (EMA) filtering, water-level tilt animation on a matrix display, and acts as the RS485 Master to collect BMS data.
+2. **Python Backend Service (`python/`)**: Orchestrates Edge Impulse Machine Learning motion inference, thread-safe telemetry tracking, Telegram Bot event handling, and a REST API for the Web UI.
 
 ---
 
 ## Component Detailed Breakdown
 
 ### 1. Arduino Firmware (`sketch/`)
-Implemented in C++ on the `arduino:zephyr` platform.
+Implemented in C++ on the Arduino platform (Zephyr).
 
-*   **[sketch.ino](file:///sketch/sketch.ino)**: The firmware entry point. Configures high-speed serial communication at 115200 bps, initializes the router bridge, and starts the telemetry acquisition and display loops.
+*   **[sketch.ino](file:///sketch/sketch.ino)**: The firmware entry point. Configures high-speed serial communication (115200 bps), initializes the RouterBridge, LED matrix, IMU, and RS485 Master.
 *   **[imu_sensor.h](file:///sketch/imu_sensor.h)** & **[imu_sensor.cpp](file:///sketch/imu_sensor.cpp)**:
-    *   **MPU6500 Driver**: Communicates over I2C at 400 kHz (Fast Mode) using the `FastIMU` library. Performs accelerometer calibration on startup.
-    *   **42 Hz Timer**: Strictly enforces a 23.8ms sampling interval (`1,000,000 / 42` microseconds) in a non-blocking loop.
-    *   **Exponential Moving Average (EMA) Filter**: Suppresses engine vibration and high-frequency chassis noise using the formula:
-        $$Acc_{\text{filtered}} = \alpha \cdot Acc_{\text{raw}} + (1 - \alpha) \cdot Acc_{\text{filtered\_prev}}$$
-        where $\alpha = 0.25$.
-    *   **Data Dispatch**: Calls the bridge function `record_sensor_movement` to stream filtered metrics (`x`, `y`, `z`, and overall $m/s^2$ ignoring vertical gravity) to Python.
+    *   **MPU6500 Driver**: Communicates over I2C at 400 kHz. Performs automatic accelerometer calibration on startup.
+    *   **42 Hz Sampling Rate**: Strictly enforces a 23.8ms sampling interval in a non-blocking loop.
+    *   **EMA Filter**: Suppresses high-frequency chassis vibration with $\alpha = 0.25$.
+    *   **Bridge Dispatch**: Streams filtered XYZ acceleration data to the Python backend via `record_sensor_movement`.
 *   **[matrix_display.h](file:///sketch/matrix_display.h)** & **[matrix_display.cpp](file:///sketch/matrix_display.cpp)**:
-    *   **LED Matrix Controller**: Controls the built-in 8x12 LED matrix under a Zephyr kernel mutex lock (`matrix_mtx`) to prevent write collisions during multi-threaded operation.
-    *   **Tilt/Water-level Indicator**: Calculates roll tilt angle using `atan2(-filtAccY, filtAccZ)`. Renders a dynamic fluid surface on the matrix that pivots around the center column, mimicking water sloshing in a container.
-    *   **7-Segment Font**: Renders custom numbers using a predefined $7 \times 5$ pixel font buffer.
+    *   **LED Matrix Controller**: Controls an 8x12 LED matrix. Uses a Zephyr kernel mutex (`matrix_mtx`) to prevent concurrent write collisions.
+    *   **Tilt Indicator**: Calculates roll angle from accelerometer data and renders a dynamic fluid surface (water sloshing effect) pivoting around the center.
+*   **[rs485_master.cpp](file:///sketch/rs485_master.cpp)**:
+    *   Acts as the RS485 UART Master, polling the BMS slave every 2 seconds.
+    *   Reads local IDS operational voltage via pin A0.
+    *   Features a robust, non-blocking byte-level RX state machine to parse incoming BMS telemetry.
+    *   **Diagnostics**: Implements an automated failover diagnostic state machine. If communication times out, it runs an IDS loopback test, disables/enables GPIOs, and falls back to network-based checking (`check_bms_via_network`) if RS485 fails.
 
 ---
 
 ### 2. Python Backend (`python/`)
-Written in Python and packaged as application bricks.
+Written in Python using the application bricks framework.
 
-*   **[main.py](file:///python/main.py)**: The orchestrator.
-    *   Initializes the core application framework and app bricks (`MotionDetection`, `TelegramBot`, `WebUI`).
-    *   Registers Bridge callbacks to ingest 42 Hz data.
-    *   Accumulates sensor telemetry into groups of 126 float values (representing 42 samples $\times$ 3 axes, spanning a 1-second inference window).
-    *   Executes localized Edge Impulse Machine Learning motion classification.
+*   **[main.py](file:///python/main.py)**: The application orchestrator.
+    *   Initializes `MotionDetection`, `TelegramBot`, and `WebUI` bricks.
+    *   Registers Bridge callbacks to ingest 42 Hz IMU data and live RS485 telemetry.
+    *   Accumulates sensor telemetry into an inference window buffer (126 features) and executes localized Edge Impulse Machine Learning classification.
 *   **[telemetry.py](file:///python/telemetry.py)**: The central data repository.
-    *   Maintains a thread-safe `state` dictionary protected by `_state_lock`.
-    *   Tracks dynamic driver metrics:
-        *   **Sudden Acceleration**: Triggered when $Acc_X > 19.6 \text{ m/s}^2$ ($> 2.0g$).
-        *   **Harsh Braking**: Triggered when $Acc_X < -19.6 \text{ m/s}^2$ ($< -2.0g$).
-        *   **Potholes**: Triggered when vertical acceleration deviates from standard gravity by more than $19.6 \text{ m/s}^2$:
-            $$|Acc_Z - g| > 19.6 \text{ m/s}^2$$
-    *   Maintains historical classification memory (capped at 50 logs).
-    *   Simulates real-time electric vehicle (EV) battery behavior (voltage, temperature, SoC, current, and cell balance flags).
+    *   Maintains a thread-safe telemetry state.
+    *   Tracks dynamic metrics: Sudden Acceleration ($> 2.0g$), Harsh Braking ($< -2.0g$), and Potholes ($|Acc_Z - g| > 19.6 \text{ m/s}^2$).
+    *   Maintains historical classification memory and processes the real-time CSV battery telemetry (Voltage, Current, Temp, OCV, SOC, SOH) dispatched from the RS485 Master.
 *   **[alert_service.py](file:///python/alert_service.py)**: Telegram Alert Dispatcher.
-    *   Listens for incoming Telegram commands: `/start` (registers user chat) and `/status` (queries current telemetry state).
-    *   Implements **cooldown protection** (`ACCIDENT_COOLDOWN_S = 60s`) to prevent emergency alert spamming.
-    *   When an `Accident` label is classified with high confidence, it pushes formatted critical notifications showing the confidence percentage and timestamp, and notifies the Arduino device to show safety indicators.
-*   **[config.py](file:///python/config.py)**: Houses system configuration constants.
+    *   Provides bot commands (`/start`, `/status`).
+    *   Monitors ML classifications. If `Accident` is classified with high confidence across 3 consecutive windows, it triggers a critical Telegram notification to registered responders, governed by a 60-second cooldown protection.
+*   **[config.py](file:///python/config.py)**: System configuration constants (thresholds, cooldowns, filter rates).
 
 ---
 
 ### 3. Application Metadata (`app.yaml`)
-Configures the brick orchestration platform, mounting the following sub-components:
-*   `arduino:motion_detection`: Sets up the Edge Impulse classification container with the model binary (`mpu6500_imu-linux-aarch64-v7-impulse-#5.eim`).
+Configures the brick orchestration platform:
+*   `arduino:motion_detection`: Loads the Edge Impulse classification container (`mpu6500_imu-linux-aarch64-v8-impulse-#9.eim`).
 *   `arduino:telegram_bot`: Configures the Telegram server connection using `TELEGRAM_BOT_TOKEN`.
-*   `arduino:web_ui`: Hosts the telematics dashboard.
+*   `arduino:web_ui`: Hosts the telematics dashboard REST API.
 
 ---
 
 ## API Endpoints (Web UI Bridge)
 
-The Python service exposes REST API endpoints through the `arduino:web_ui` brick:
+The Python service exposes REST API endpoints:
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
-| `/status` | `GET` | Fetches the current telemetry state (IMU raw values, trip statistics, driver alerts, and battery status). |
-| `/history` | `GET` | Returns the recent classifications history. |
+| `/status` | `GET` | Fetches the current telemetry state (IMU, alerts, trip stats) and local IDS voltage. |
+| `/bms`    | `GET` | Fetches the latest live BMS data collected via the RS485 Master bridge. |
+| `/history`| `GET` | Returns the recent accident/incident classification history. |
 | `/reset_incidents` | `POST` | Clears current trip statistics (harsh brakes, sudden acceleration, potholes). |
 
 ---
@@ -83,6 +79,6 @@ The Python service exposes REST API endpoints through the `arduino:web_ui` brick
           TELEGRAM_BOT_TOKEN: "your_bot_token_here"
     ```
 2.  **Arduino Calibration**:
-    Keep the device level on startup. The MPU6500 performs an offset calibration routine for the accelerometer in `init_imu()`.
+    Ensure the hardware is completely level on startup, as the MPU6500 performs an offset calibration routine in `init_imu()`.
 3.  **Run Application**:
-    Run the application using the brick platform commands. The Python service will handle reading from the Arduino board and launching the local HTTP web UI.
+    Deploy the application. The system will automatically spin up the Zephyr RTOS threads, the RS485 polling loops, ML inference engine, and the web/Telegram services.
