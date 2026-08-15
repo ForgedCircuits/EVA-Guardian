@@ -1,9 +1,19 @@
 """!
 @file config.py
-@brief System configuration parameters and constant definitions.
-@details Contains threshold settings, sampling constants, physics constants,
-         and buffer sizes for the Incident Detection System.
+@brief Configuration settings for the Incident Detection System (IDS).
+@details Loads environment variables and static configuration parameters 
+         for the Telegram bot and alert routing.
 """
+
+import os
+
+## @brief Telegram Bot Token (used by the AlertService to dispatch SOS messages).
+## @details Sourced from the 'TELEGRAM_BOT_TOKEN' environment variable.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+
+## @brief Default Telegram Chat ID for dispatching emergency alerts.
+## @details Can be a group chat ID or a direct user ID.
+DEFAULT_CHAT_ID = "-1002242136979"
 
 ## @brief Machine Learning motion classification threshold.
 MOTION_CONFIDENCE: float = 0.4

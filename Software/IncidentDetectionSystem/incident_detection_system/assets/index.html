@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EV Telematics & Battery Health System</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <meta name="description" content="Industrial EV Telematics, Battery Health & Drive Safety Dashboard." />
   <style>
     /* ═══════════════════════════════════════════════════════════════
@@ -212,6 +213,52 @@
       height: 14px;
     }
 
+    /* ── Tabs ──────────────────────────────────────── */
+    .tabs-container {
+      display: flex;
+      gap: 16px;
+      padding: 0 32px;
+      margin-top: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: var(--transition);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+    .tab-btn.active {
+      color: var(--color-cyan);
+      border-bottom-color: var(--color-cyan);
+    }
+    
+    .chart-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      height: 400px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .graphs-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
     /* ── Content Layout Wrapper ─────────────────────────────────────── */
     .content-area {
       flex: 1;
@@ -222,6 +269,13 @@
       display: flex;
       flex-direction: column;
       gap: 32px;
+    }
+
+    .content-area.tab-content {
+      display: none;
+    }
+    .content-area.tab-content.active {
+      display: flex;
     }
 
     /* ── Section Titles ──────────────────────────────────────── */
@@ -577,6 +631,16 @@
           <span>SYSTEM ACTIVE</span>
         </div>
 
+        <div class="status-pill" id="bms-link-pill" style="background:rgba(100,116,139,0.12);border-color:rgba(100,116,139,0.3);color:var(--color-slate)">
+          <div class="status-dot" id="bms-link-dot" style="background:var(--color-slate);box-shadow:none"></div>
+          <span id="bms-link-label">BMS DISCONNECTED</span>
+        </div>
+
+        <div class="status-pill" id="pwr-connector-pill" style="background:rgba(100,116,139,0.12);border-color:rgba(100,116,139,0.3);color:var(--color-slate)">
+          <div class="status-dot" id="pwr-connector-dot" style="background:var(--color-slate);box-shadow:none"></div>
+          <span id="pwr-connector-label">PWR: -- (WAITING)</span>
+        </div>
+
         <div class="status-badge-large" id="overall-status-badge">SYSTEM OPTIMAL</div>
 
         <div class="sos-badge" id="sos-trigger-badge" style="display: none;">
@@ -609,8 +673,14 @@
       <div class="warning-body" id="warning-message">Telemetry warning event triggered.</div>
     </div>
 
+    <!-- Tabs -->
+    <div class="tabs-container">
+      <button class="tab-btn active" onclick="switchTab('tab-dashboard')">Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('tab-graphs')">Live Graphs</button>
+    </div>
+
     <!-- Content Area -->
-    <main class="content-area">
+    <main class="content-area tab-content active" id="tab-dashboard">
 
       <!-- ═══════════════════════════════════════════════════════════════
          BATTERY SECTION
@@ -623,31 +693,49 @@
             <div class="stat-tile">
               <div class="stat-title">
                 SOC
-                <span class="status-tag tag-normal">Optimal</span>
+                <span class="status-tag tag-normal" id="bh-soc-tag">Optimal</span>
               </div>
-              <div class="stat-value" id="ev-soc-num" style="color:var(--color-emerald)">88%</div>
+              <div class="stat-value" id="ev-soc-num" style="color:var(--color-emerald)">—</div>
               <div class="stat-subtitle">State of Charge</div>
             </div>
 
             <div class="stat-tile">
               <div class="stat-title">
                 SOH
-                <span class="status-tag tag-normal">Excellent</span>
+                <span class="status-tag tag-normal" id="bh-soh-tag">Excellent</span>
               </div>
-              <div class="stat-value" id="bh-soh" style="color:var(--color-cyan)">96.8%</div>
+              <div class="stat-value" id="bh-soh" style="color:var(--color-cyan)">—</div>
               <div class="stat-subtitle">State of Health</div>
             </div>
 
             <div class="stat-tile">
               <div class="stat-title">VOLTAGE</div>
-              <div class="stat-value" id="ev-voltage" style="color:var(--color-amber)">8.4</div>
+              <div class="stat-value" id="ev-voltage" style="color:var(--color-amber)">—</div>
               <div class="stat-subtitle">Pack Volts (DC)</div>
             </div>
 
             <div class="stat-tile">
               <div class="stat-title">CURRENT</div>
-              <div class="stat-value" id="ev-current" style="color:var(--color-purple)">0.5</div>
+              <div class="stat-value" id="ev-current" style="color:var(--color-purple)">—</div>
               <div class="stat-subtitle">Amperes (A)</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">TEMPERATURE</div>
+              <div class="stat-value" id="ev-temperature" style="color:var(--color-rose)">—</div>
+              <div class="stat-subtitle">Pack Temp (°C)</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">OCV</div>
+              <div class="stat-value" id="ev-ocv" style="color:var(--text-main)">—</div>
+              <div class="stat-subtitle">Open-Circuit Voltage (V)</div>
+            </div>
+
+            <div class="stat-tile">
+              <div class="stat-title">COULOMB COUNT</div>
+              <div class="stat-value" id="ev-coulombs" style="color:var(--color-indigo)">—</div>
+              <div class="stat-subtitle">Accumulated Charge (Ah)</div>
             </div>
 
             <div class="stat-tile">
@@ -658,29 +746,29 @@
 
             <div class="stat-tile">
               <div class="stat-title">OVER VOLTAGE (OV)</div>
-              <div class="stat-value" style="font-size:22px" id="bh-ov">NORMAL</div>
-              <div class="stat-subtitle">Max 4.15V / Cell</div>
+              <div class="stat-value" style="font-size:18px" id="bh-ov">—</div>
+              <div class="stat-subtitle">Max 8.4V Pack</div>
             </div>
 
             <div class="stat-tile">
               <div class="stat-title">UNDER VOLTAGE (UV)</div>
-              <div class="stat-value" style="font-size:22px" id="bh-uv">NORMAL</div>
-              <div class="stat-subtitle">Min 3.65V / Cell</div>
+              <div class="stat-value" style="font-size:18px" id="bh-uv">—</div>
+              <div class="stat-subtitle">Min 6.0V Pack</div>
             </div>
 
             <div class="stat-tile">
               <div class="stat-title">OVER CURRENT (OC)</div>
-              <div class="stat-value" style="font-size:22px" id="bh-oc">NORMAL</div>
+              <div class="stat-value" style="font-size:18px" id="bh-oc">—</div>
               <div class="stat-subtitle">Surge Protection</div>
             </div>
 
             <div class="stat-tile" style="grid-column: span auto;">
               <div class="stat-title">
                 BMS STATUS
-                <span class="status-tag tag-normal">Active</span>
+                <span class="status-tag tag-normal" id="bh-bms-tag">Active</span>
               </div>
-              <div class="stat-value" style="font-size:22px;color:var(--color-emerald)" id="bh-bms">NOMINAL</div>
-              <div class="stat-subtitle">Cell Balancing</div>
+              <div class="stat-value" style="font-size:20px;color:var(--color-emerald)" id="bh-bms">WAITING</div>
+              <div class="stat-subtitle" id="bh-last-updated">Last updated: --:--:--</div>
             </div>
 
           </div>
@@ -790,6 +878,27 @@
       </section>
 
     </main>
+
+    <!-- Live Graphs Tab Content -->
+    <main class="content-area tab-content" id="tab-graphs">
+      <section class="section-graphs">
+        <div class="section-header">LIVE TELEMETRY GRAPHS</div>
+        <div class="graphs-grid">
+          <div class="chart-container">
+            <div class="card-label" style="margin-bottom:12px;">TOTAL ACCELERATION</div>
+            <div style="position:relative; flex:1; width:100%;">
+              <canvas id="chartAcc"></canvas>
+            </div>
+          </div>
+          <div class="chart-container">
+            <div class="card-label" style="margin-bottom:12px;">BATTERY TELEMETRY (V, A, SOC)</div>
+            <div style="position:relative; flex:1; width:100%;">
+              <canvas id="chartBMS"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script>
@@ -810,6 +919,161 @@
 
     /** @type {number|null} Warning popup auto-dismiss timer handle. */
     let warningTimeout = null;
+
+    /**
+     * @brief Switches the active tab view.
+     * @param {string} tabId Target tab ID.
+     */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('onclick').includes(tabId)) {
+          btn.classList.add('active');
+        }
+      });
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    // Chart Setup
+    const maxDataPoints = 60;
+    
+    // Acceleration Chart
+    const chartAccCtx = document.getElementById('chartAcc').getContext('2d');
+    const chartAcc = new Chart(chartAccCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Total Accel (m/s²)',
+            data: [],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2,
+            yAxisID: 'y'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        color: '#94a3b8',
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#94a3b8' }
+          },
+          y: {
+            type: 'linear', display: true, position: 'left',
+            title: { display: true, text: 'Accel (m/s²)', color: '#38bdf8' },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#94a3b8' }
+          }
+        },
+        plugins: {
+          legend: { labels: { color: '#f8fafc' } }
+        }
+      }
+    });
+
+    // BMS Chart
+    const chartBMSCtx = document.getElementById('chartBMS').getContext('2d');
+    const chartBMS = new Chart(chartBMSCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Voltage (V)',
+            data: [],
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2,
+            yAxisID: 'y1'
+          },
+          {
+            label: 'Current (A)',
+            data: [],
+            borderColor: '#a855f7',
+            backgroundColor: 'rgba(168, 85, 247, 0.1)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2,
+            yAxisID: 'y1'
+          },
+          {
+            label: 'SOC (%)',
+            data: [],
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2,
+            yAxisID: 'y2'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        color: '#94a3b8',
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#94a3b8' }
+          },
+          y1: {
+            type: 'linear', display: true, position: 'left',
+            title: { display: true, text: 'V / A', color: '#f59e0b' },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#94a3b8' }
+          },
+          y2: {
+            type: 'linear', display: true, position: 'right',
+            title: { display: true, text: 'SOC (%)', color: '#10b981' },
+            grid: { drawOnChartArea: false },
+            min: 0, max: 100,
+            ticks: { color: '#94a3b8' }
+          }
+        },
+        plugins: {
+          legend: { labels: { color: '#f8fafc' } }
+        }
+      }
+    });
+
+    function updateChart(acc, voltage, current, soc, timestamp) {
+      const timeStr = timestamp || new Date().toLocaleTimeString();
+      
+      chartAcc.data.labels.push(timeStr);
+      chartAcc.data.datasets[0].data.push(acc);
+      if (chartAcc.data.labels.length > maxDataPoints) {
+        chartAcc.data.labels.shift();
+        chartAcc.data.datasets[0].data.shift();
+      }
+      chartAcc.update();
+
+      chartBMS.data.labels.push(timeStr);
+      chartBMS.data.datasets[0].data.push(voltage);
+      chartBMS.data.datasets[1].data.push(current);
+      chartBMS.data.datasets[2].data.push(soc);
+      if (chartBMS.data.labels.length > maxDataPoints) {
+        chartBMS.data.labels.shift();
+        chartBMS.data.datasets.forEach(dataset => dataset.data.shift());
+      }
+      chartBMS.update();
+    }
 
     /**
      * @brief Triggers a slide-in warning pop-up modal overlay.
@@ -887,17 +1151,159 @@
         }
         lastClassification = cls;
 
-        /* Battery Telemetry */
+        /* Battery Telemetry — sourced from live RS485 BMS packets */
         const bh = data.battery_health || {};
-        const soc = bh.soc || 88.5;
-        document.getElementById('ev-soc-num').textContent = `${Math.round(soc)}%`;
-        document.getElementById('bh-soh').textContent = `${bh.soh || 96.8}%`;
-        document.getElementById('ev-voltage').textContent = (bh.voltage_v || 8.4).toFixed(1);
-        document.getElementById('ev-current').textContent = (bh.current_a || 0.5).toFixed(1);
-        document.getElementById('bh-ov').textContent = bh.ov || 'NORMAL';
-        document.getElementById('bh-uv').textContent = bh.uv || 'NORMAL';
-        document.getElementById('bh-oc').textContent = bh.oc || 'NORMAL';
-        document.getElementById('bh-bms').textContent = bh.bms_status || 'NOMINAL';
+        const soc = typeof bh.soc === 'number' ? bh.soc : null;
+
+        /* SOC */
+        const socEl = document.getElementById('ev-soc-num');
+        const socTag = document.getElementById('bh-soc-tag');
+        if (soc !== null) {
+          socEl.textContent = `${Math.round(soc)}%`;
+          socEl.style.color = soc > 50 ? 'var(--color-emerald)' : soc > 20 ? 'var(--color-amber)' : 'var(--color-rose)';
+          if (socTag) socTag.textContent = soc > 80 ? 'Optimal' : soc > 20 ? 'Low' : 'Critical';
+        }
+
+        /* SOH */
+        const sohEl = document.getElementById('bh-soh');
+        const sohTag = document.getElementById('bh-soh-tag');
+        const soh = typeof bh.soh === 'number' ? bh.soh : null;
+        if (soh !== null) {
+          sohEl.textContent = `${soh.toFixed(1)}%`;
+          sohEl.style.color = soh > 90 ? 'var(--color-cyan)' : soh > 80 ? 'var(--color-amber)' : 'var(--color-rose)';
+          if (sohTag) sohTag.textContent = soh > 90 ? 'Excellent' : soh > 80 ? 'Good' : 'Degraded';
+        }
+
+        /* Voltage */
+        const voltEl = document.getElementById('ev-voltage');
+        const volt = typeof bh.voltage_v === 'number' ? bh.voltage_v : null;
+        if (volt !== null) {
+          voltEl.textContent = volt.toFixed(3);
+          voltEl.style.color = (volt > 8.4 || volt < 6.0) ? 'var(--color-rose)' : 'var(--color-amber)';
+        }
+
+        /* Current */
+        const currEl = document.getElementById('ev-current');
+        const curr = typeof bh.current_a === 'number' ? bh.current_a : null;
+        if (curr !== null) {
+          currEl.textContent = curr.toFixed(4);
+          currEl.style.color = Math.abs(curr) > 5.0 ? 'var(--color-rose)' : 'var(--color-purple)';
+        }
+
+        /* Temperature */
+        const tempEl = document.getElementById('ev-temperature');
+        const temp = typeof bh.temperature_c === 'number' ? bh.temperature_c : null;
+        if (temp !== null) {
+          tempEl.textContent = `${temp.toFixed(1)}°C`;
+          tempEl.style.color = temp > 45 ? 'var(--color-rose)' : temp > 35 ? 'var(--color-amber)' : 'var(--color-emerald)';
+        }
+
+        /* OCV */
+        const ocvEl = document.getElementById('ev-ocv');
+        const ocv = typeof bh.ocv_v === 'number' ? bh.ocv_v : null;
+        if (ocv !== null) ocvEl.textContent = `${ocv.toFixed(3)} V`;
+
+        /* Coulomb Count */
+        const ccEl = document.getElementById('ev-coulombs');
+        const cc = typeof bh.coulomb_count_ah === 'number' ? bh.coulomb_count_ah : null;
+        if (cc !== null) ccEl.textContent = `${cc.toFixed(4)} Ah`;
+
+        /* OV / UV / OC */
+        const bh_ov = document.getElementById('bh-ov');
+        const bh_uv = document.getElementById('bh-uv');
+        const bh_oc = document.getElementById('bh-oc');
+        if (bh_ov) {
+          bh_ov.textContent = bh.ov || '—';
+          bh_ov.style.color = (bh.ov || '').startsWith('ALERT') ? 'var(--color-rose)' : 'var(--color-emerald)';
+        }
+        if (bh_uv) {
+          bh_uv.textContent = bh.uv || '—';
+          bh_uv.style.color = (bh.uv || '').startsWith('ALERT') ? 'var(--color-rose)' : 'var(--color-emerald)';
+        }
+        if (bh_oc) {
+          bh_oc.textContent = bh.oc || '—';
+          bh_oc.style.color = (bh.oc || '').startsWith('ALERT') ? 'var(--color-rose)' : 'var(--color-emerald)';
+        }
+
+        /* BMS Status + last updated */
+        const bmsEl = document.getElementById('bh-bms');
+        const bmsTag = document.getElementById('bh-bms-tag');
+        const lastUpdEl = document.getElementById('bh-last-updated');
+        const bmsStatus = bh.bms_status || '—';
+        if (bmsEl) {
+          bmsEl.textContent = bmsStatus;
+          bmsEl.style.color = bmsStatus.startsWith('FAULT') ? 'var(--color-rose)'
+                             : bmsStatus.startsWith('WARNING') ? 'var(--color-amber)'
+                             : 'var(--color-emerald)';
+        }
+        if (bmsTag) bmsTag.textContent = bmsStatus.startsWith('FAULT') ? 'Fault' : bmsStatus.startsWith('WARNING') ? 'Warn' : 'Active';
+        if (lastUpdEl) lastUpdEl.textContent = `Last updated: ${bh.last_updated || '--:--:--'}`;
+
+        /* Power Connector Drop (Navbar Pill) */
+        const pwrPill = document.getElementById('pwr-connector-pill');
+        const pwrDot = document.getElementById('pwr-connector-dot');
+        const pwrLabel = document.getElementById('pwr-connector-label');
+        const idsV = typeof bh.ids_voltage === 'number' ? bh.ids_voltage : volt;
+        if (pwrPill && pwrDot && pwrLabel && volt !== null && idsV !== null) {
+          const drop = volt - idsV;
+          const cStatus = bh.connector_status || 'NOMINAL';
+          const dropStr = drop.toFixed(3);
+          
+          if (cStatus === 'SEVERE DEGRADATION' || cStatus === 'BROKEN') {
+            pwrPill.style.background = 'rgba(244,63,94,0.12)';
+            pwrPill.style.borderColor = 'rgba(244,63,94,0.35)';
+            pwrPill.style.color = 'var(--color-rose)';
+            pwrDot.style.background = 'var(--color-rose)';
+            pwrDot.style.boxShadow = '0 0 8px var(--color-rose)';
+            pwrLabel.textContent = `PWR: ${dropStr}V DROP (ERROR)`;
+          } else if (cStatus === 'DEGRADED') {
+            pwrPill.style.background = 'rgba(245,158,11,0.12)';
+            pwrPill.style.borderColor = 'rgba(245,158,11,0.35)';
+            pwrPill.style.color = 'var(--color-amber)';
+            pwrDot.style.background = 'var(--color-amber)';
+            pwrDot.style.boxShadow = '0 0 8px var(--color-amber)';
+            pwrLabel.textContent = `PWR: ${dropStr}V DROP (WARN)`;
+          } else {
+            pwrPill.style.background = 'rgba(16,185,129,0.12)';
+            pwrPill.style.borderColor = 'rgba(16,185,129,0.35)';
+            pwrPill.style.color = 'var(--color-emerald)';
+            pwrDot.style.background = 'var(--color-emerald)';
+            pwrDot.style.boxShadow = '0 0 8px var(--color-emerald)';
+            pwrLabel.textContent = `PWR: ${dropStr}V DROP (NOMINAL)`;
+          }
+        }
+
+        /* BMS RS485 Link Status indicator (navbar pill) */
+        const linkPill = document.getElementById('bms-link-pill');
+        const linkDot  = document.getElementById('bms-link-dot');
+        const linkLabel = document.getElementById('bms-link-label');
+        const isConnected = (bh.bms_link_status === 'CONNECTED');
+        const commFault = bh.comm_fault || 'NOMINAL';
+        
+        if (linkPill && linkDot && linkLabel) {
+          if (isConnected) {
+            linkPill.style.background = 'rgba(16,185,129,0.12)';
+            linkPill.style.borderColor = 'rgba(16,185,129,0.35)';
+            linkPill.style.color = 'var(--color-emerald)';
+            linkDot.style.background = 'var(--color-emerald)';
+            linkDot.style.boxShadow = '0 0 8px var(--color-emerald)';
+            linkLabel.textContent = 'BMS LINKED';
+          } else if (commFault !== 'NOMINAL') {
+            linkPill.style.background = 'rgba(244,63,94,0.15)';
+            linkPill.style.borderColor = 'rgba(244,63,94,0.4)';
+            linkPill.style.color = 'var(--color-rose)';
+            linkDot.style.background = 'var(--color-rose)';
+            linkDot.style.boxShadow = '0 0 10px var(--color-rose)';
+            linkLabel.textContent = commFault;
+          } else {
+            linkPill.style.background = 'rgba(100,116,139,0.12)';
+            linkPill.style.borderColor = 'rgba(100,116,139,0.3)';
+            linkPill.style.color = 'var(--color-slate)';
+            linkDot.style.background = 'var(--color-slate)';
+            linkDot.style.boxShadow = 'none';
+            linkLabel.textContent = 'BMS DISCONNECTED';
+          }
+        }
 
         /* Drive & Safety Telemetry */
         const ds = data.drive_safety || {};
@@ -925,6 +1331,15 @@
           document.getElementById('ds-sos').textContent = 'READY';
           document.getElementById('ds-sos').style.color = 'var(--color-cyan)';
         }
+
+        /* Update Live Graph */
+        updateChart(
+          totalAcc,
+          typeof bh.voltage_v === 'number' ? bh.voltage_v : 0,
+          typeof bh.current_a === 'number' ? bh.current_a : 0,
+          typeof bh.soc === 'number' ? bh.soc : 0,
+          data.timestamp || '--:--:--'
+        );
 
       } catch (err) {
         console.warn('Telemetry poll error', err);

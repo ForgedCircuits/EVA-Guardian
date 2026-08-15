@@ -1,6 +1,9 @@
 profiles:
   default:
+    fqbn: 
     platforms:
       - platform: arduino:zephyr
     libraries:
+      - EEPROMAdapter (1.1.4)
+
 default_profile: default
