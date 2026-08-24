@@ -53,9 +53,9 @@ void render_digit(int digit, int col_offset, uint8_t brightness) {
     for (int c = 0; c < 5; c++) {
       int col = col_offset + c;
       if (col >= 0 && col < 13) {
-        // Default orientation (0-degree rotation relative to base)
-        int flipped_r = r;
-        int flipped_col = col;
+        // 180-degree rotation
+        int flipped_r = 7 - r;
+        int flipped_col = 12 - col;
         matrix_buf[flipped_r][flipped_col] = DIGIT_FONT[digit][r][c] ? brightness : 0;
       }
     }
